@@ -1,0 +1,6 @@
+apache-airflow==3.0.0 --constraint https://raw.githubusercontent.com/apache/airflow/constraints-3.0.0/constraints-3.0.0-py3.10.txt
+apache-airflow-providers-google==10.16.0
+pandas
+google-cloud-storage
+google-cloud-bigquery
+requests

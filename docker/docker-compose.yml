@@ -1,0 +1,45 @@
+version: '3'
+x-airflow-common:
+  &airflow-common
+  image: apache/airflow:3.0.0-python3.10
+  environment:
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    - postgres
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      - airflow-scheduler
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+
+  airflow-init:
+    <<: *airflow-common
+    command: bash -c "airflow db migrate && airflow users create --username airflow --password airflow --firstname Air --lastname Flow --role Admin --email admin@example.com"
+
+volumes:
+  postgres-db-volume:
