@@ -1,5 +1,0 @@
-rules:
-  - rule_id: check_email_format
-    rule_type: REGEX
-    column_id: email
-    pattern: '^\\S+@\\S+\\.\\S+$'
