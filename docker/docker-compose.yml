@@ -13,7 +13,7 @@ x-airflow-common:
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
     - ./gcp_keys/credenciales.json:/opt/airflow/keys/credenciales.json:ro  # Mapeo desde tu carpeta real
-    - ./init_airflow_user.sh:/opt/airflow/init_airflow_user.sh  # Montar el script
+
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     - postgres
@@ -30,7 +30,7 @@ services:
 
   airflow-webserver:
     <<: *airflow-common
-    command: /bin/bash -c "/opt/airflow/init_airflow_user.sh && airflow webserver"
+    command: webserver
     ports:
       - "8080:8080"
     depends_on:
@@ -38,7 +38,7 @@ services:
 
   airflow-scheduler:
     <<: *airflow-common
-    command: /bin/bash -c "/opt/airflow/init_airflow_user.sh && airflow scheduler"
+    command: scheduler
 
 volumes:
   postgres-db-volume:
