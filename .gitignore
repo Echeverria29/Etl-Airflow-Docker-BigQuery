@@ -1,4 +1,4 @@
 .env
 gcp_keys
-venv
+env
 .vscode

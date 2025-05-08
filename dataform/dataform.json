@@ -1,7 +1,12 @@
 {
-    "warehouse": "bigquery",
-    "defaultSchema": "${BIGQUERY_DATASET_ID}",
-    "assertionSchema": "dataform_assertions",
-    "projectId": "${DATAFORM_PROJECT_ID}"
+  "name": "customer_etl_dataform",
+  "version": "1.0.0",
+  "description": "Modelos de Dataform para la tabla clientes",
+  "scripts": {
+    "compile": "dataform compile",
+    "run": "dataform run"
+  },
+  "dependencies": {
+    "@dataform/core": "^1.5.0"
   }
-  
+}

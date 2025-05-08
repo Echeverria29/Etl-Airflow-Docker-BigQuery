@@ -4,10 +4,9 @@ config {
 }
 
 SELECT
-  id.value       AS id,
-  name.first     AS first_name,
-  name.last      AS last_name,
+  full_name,
   email,
-  dob.date       AS birth_date
+  national_id,
+  country
 FROM
-  ${ref("clientes_dataset_clientes")}
+  ${ref("clientes")}

@@ -1,16 +1,20 @@
 version: '3'
+
 x-airflow-common:
   &airflow-common
-  image: apache/airflow:3.0.0-python3.10
+  build: .  # Usar el Dockerfile para construir la imagen
   environment:
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/keys/credenciales.json  # Ruta en el contenedor
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
+    - ./gcp_keys/credenciales.json:/opt/airflow/keys/credenciales.json:ro  # Mapeo desde tu carpeta real
+
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     - postgres
@@ -39,7 +43,9 @@ services:
 
   airflow-init:
     <<: *airflow-common
-    command: bash -c "airflow db migrate && airflow users create --username airflow --password airflow --firstname Air --lastname Flow --role Admin --email admin@example.com"
+    command: >
+      bash -c "airflow db migrate && 
+               airflow users create --username airflow --password airflow --firstname Air --lastname Flow --role Admin --email admin@example.com"
 
 volumes:
   postgres-db-volume:
