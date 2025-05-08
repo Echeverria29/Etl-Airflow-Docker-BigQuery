@@ -1,10 +1,9 @@
-version: '3'
-
 x-airflow-common:
   &airflow-common
   build: .  # Usar el Dockerfile para construir la imagen
   environment:
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
@@ -14,7 +13,7 @@ x-airflow-common:
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
     - ./gcp_keys/credenciales.json:/opt/airflow/keys/credenciales.json:ro  # Mapeo desde tu carpeta real
-
+    - ./init_airflow_user.sh:/opt/airflow/init_airflow_user.sh  # Montar el script
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     - postgres
@@ -31,7 +30,7 @@ services:
 
   airflow-webserver:
     <<: *airflow-common
-    command: webserver
+    command: /bin/bash -c "/opt/airflow/init_airflow_user.sh && airflow webserver"
     ports:
       - "8080:8080"
     depends_on:
@@ -39,13 +38,7 @@ services:
 
   airflow-scheduler:
     <<: *airflow-common
-    command: scheduler
-
-  airflow-init:
-    <<: *airflow-common
-    command: >
-      bash -c "airflow db migrate && 
-               airflow users create --username airflow --password airflow --firstname Air --lastname Flow --role Admin --email admin@example.com"
+    command: /bin/bash -c "/opt/airflow/init_airflow_user.sh && airflow scheduler"
 
 volumes:
   postgres-db-volume:

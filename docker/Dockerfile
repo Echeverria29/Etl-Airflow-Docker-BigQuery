@@ -11,12 +11,14 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-
-# Instalar dependencias de Python
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Volver al usuario airflow
+# Cambiar al usuario airflow antes de instalar dependencias Python
 USER airflow
+
+# Copiar el archivo requirements.txt al contenedor
+COPY requirements.txt .
+
+# Instalar dependencias de Python como usuario airflow
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Comando por defecto
 CMD ["bash"]
