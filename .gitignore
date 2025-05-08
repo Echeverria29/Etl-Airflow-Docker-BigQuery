@@ -1,0 +1,4 @@
+.env
+gcp_keys
+venv
+.vscode
