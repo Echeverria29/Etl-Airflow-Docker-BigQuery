@@ -1,22 +1,4 @@
-x-airflow-common:
-  &airflow-common
-  build: .  # Usar el Dockerfile para construir la imagen
-  environment:
-    AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW__CORE__FERNET_KEY: ''
-    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/keys/credenciales.json  # Ruta en el contenedor
-  volumes:
-    - ./dags:/opt/airflow/dags
-    - ./logs:/opt/airflow/logs
-    - ./plugins:/opt/airflow/plugins
-    - ./gcp_keys/credenciales.json:/opt/airflow/keys/credenciales.json:ro  # Mapeo desde tu carpeta real
-
-  user: "${AIRFLOW_UID:-50000}:0"
-  depends_on:
-    - postgres
+version: '3.8'
 
 services:
   postgres:
@@ -27,18 +9,64 @@ services:
       POSTGRES_DB: airflow
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
 
   airflow-webserver:
-    <<: *airflow-common
-    command: webserver
+    image: apache/airflow:3.0.0-python3.12
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: >-
+        google-cloud-platform://?key_path=/opt/airflow/keys/credenciales.json&project=tu-proyecto-id&scope=https://www.googleapis.com/auth/cloud-platform
+
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./gcp_keys/credenciales.json:/opt/airflow/keys/credenciales.json:ro
     ports:
       - "8080:8080"
-    depends_on:
-      - airflow-scheduler
+    command: webserver
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      retries: 5
+      start_period: 30s
 
   airflow-scheduler:
-    <<: *airflow-common
+    image: apache/airflow:3.0.0-python3.12
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: >-
+        google-cloud-platform://?key_path=/opt/airflow/keys/credenciales.json&project=tu-proyecto-id&scope=https://www.googleapis.com/auth/cloud-platform
+      BIGQUERY_PROJECT_ID: ${BIGQUERY_PROJECT_ID}
+      BIGQUERY_DATASET_ID: ${BIGQUERY_DATASET_ID}
+      BIGQUERY_TABLE_ID: ${BIGQUERY_TABLE_ID}
+      DATAFORM_PROJECT_ID: ${DATAFORM_PROJECT_ID}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./gcp_keys/credenciales.json:/opt/airflow/keys/credenciales.json:ro
     command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      retries: 5
+      start_period: 30s
 
 volumes:
   postgres-db-volume:
