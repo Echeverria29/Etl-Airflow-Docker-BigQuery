@@ -16,7 +16,7 @@ services:
       start_period: 5s
 
   airflow-webserver:
-    image: apache/airflow:3.0.0-python3.12
+    build: .  # Esto indica que use el Dockerfile en el directorio actual
     depends_on:
       postgres:
         condition: service_healthy
@@ -26,7 +26,14 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
       AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: >-
         google-cloud-platform://?key_path=/opt/airflow/keys/credenciales.json&project=tu-proyecto-id&scope=https://www.googleapis.com/auth/cloud-platform
-
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: airflow
+      _AIRFLOW_WWW_USER_PASSWORD: airflow
+      _AIRFLOW_WWW_USER_FIRSTNAME: Air
+      _AIRFLOW_WWW_USER_LASTNAME: Flow
+      _AIRFLOW_WWW_USER_ROLE: Admin
+      _AIRFLOW_WWW_USER_EMAIL: admin@example.com
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -34,7 +41,7 @@ services:
       - ./gcp_keys/credenciales.json:/opt/airflow/keys/credenciales.json:ro
     ports:
       - "8080:8080"
-    command: webserver
+    command: "airflow standalone"  # Cambié 'webserver' a 'standalone'
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
@@ -42,7 +49,7 @@ services:
       start_period: 30s
 
   airflow-scheduler:
-    image: apache/airflow:3.0.0-python3.12
+    build: .  # Esto indica que use el Dockerfile en el directorio actual
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,6 +74,23 @@ services:
       interval: 30s
       retries: 5
       start_period: 30s
+
+  airflow-init:
+    build: .  # Esto indica que use el Dockerfile en el directorio actual
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: airflow
+      _AIRFLOW_WWW_USER_PASSWORD: airflow
+      _AIRFLOW_WWW_USER_FIRSTNAME: Air
+      _AIRFLOW_WWW_USER_LASTNAME: Flow
+      _AIRFLOW_WWW_USER_ROLE: Admin
+      _AIRFLOW_WWW_USER_EMAIL: admin@example.com
+    command: airflow db migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres-db-volume:
