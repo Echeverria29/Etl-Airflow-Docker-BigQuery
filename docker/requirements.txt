@@ -1,5 +1,7 @@
-apache-airflow==3.0.0 --constraint https://raw.githubusercontent.com/apache/airflow/constraints-3.0.0/constraints-3.0.0-py3.10.txt
+# Si quieres usar solo los extras que no vienen preinstalados:
 apache-airflow-providers-google==10.16.0
+
+# Dependencias de tu DAG
 pandas
 requests
 google-cloud-storage
