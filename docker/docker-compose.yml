@@ -14,9 +14,10 @@ services:
       interval: 10s
       retries: 5
       start_period: 5s
+    restart: always
 
-  airflow-webserver:
-    build: .  # Esto indica que use el Dockerfile en el directorio actual
+  airflow-apiserver:
+    build: .  # Usa el Dockerfile en la carpeta actual (docker/)
     depends_on:
       postgres:
         condition: service_healthy
@@ -25,7 +26,8 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
       AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: >-
-        google-cloud-platform://?key_path=/opt/airflow/keys/credenciales.json&project=tu-proyecto-id&scope=https://www.googleapis.com/auth/cloud-platform
+        google-cloud-platform://?key_path=/opt/airflow/keys/credenciales.json&project=${BIGQUERY_PROJECT_ID}&scope=https://www.googleapis.com/auth/cloud-platform
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
       _AIRFLOW_DB_MIGRATE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: airflow
@@ -34,22 +36,30 @@ services:
       _AIRFLOW_WWW_USER_LASTNAME: Flow
       _AIRFLOW_WWW_USER_ROLE: Admin
       _AIRFLOW_WWW_USER_EMAIL: admin@example.com
+      BIGQUERY_PROJECT_ID: ${BIGQUERY_PROJECT_ID}
+      BIGQUERY_DATASET_ID: ${BIGQUERY_DATASET_ID}
+      BIGQUERY_TABLE_ID: ${BIGQUERY_TABLE_ID}
+      DATAFORM_PROJECT_ID: ${DATAFORM_PROJECT_ID}
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-      - ./gcp_keys/credenciales.json:/opt/airflow/keys/credenciales.json:ro
+      - ../dags:/opt/airflow/dags
+      - ../logs:/opt/airflow/logs
+      - ../plugins:/opt/airflow/plugins
+      - ../gcp_keys/credenciales.json:/opt/airflow/keys/credenciales.json:ro
     ports:
       - "8080:8080"
-    command: "airflow standalone"  # Cambié 'webserver' a 'standalone'
+    command: ["airflow", "api-server"]
+    user: "${AIRFLOW_UID}:0"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
       interval: 30s
+      timeout: 10s
       retries: 5
       start_period: 30s
+    restart: always
+
 
   airflow-scheduler:
-    build: .  # Esto indica que use el Dockerfile en el directorio actual
+    build: .
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,28 +68,34 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
       AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: >-
-        google-cloud-platform://?key_path=/opt/airflow/keys/credenciales.json&project=tu-proyecto-id&scope=https://www.googleapis.com/auth/cloud-platform
+        google-cloud-platform://?key_path=/opt/airflow/keys/credenciales.json&project=${BIGQUERY_PROJECT_ID}&scope=https://www.googleapis.com/auth/cloud-platform
       BIGQUERY_PROJECT_ID: ${BIGQUERY_PROJECT_ID}
       BIGQUERY_DATASET_ID: ${BIGQUERY_DATASET_ID}
       BIGQUERY_TABLE_ID: ${BIGQUERY_TABLE_ID}
       DATAFORM_PROJECT_ID: ${DATAFORM_PROJECT_ID}
     volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-      - ./gcp_keys/credenciales.json:/opt/airflow/keys/credenciales.json:ro
+      - ../dags:/opt/airflow/dags
+      - ../logs:/opt/airflow/logs
+      - ../plugins:/opt/airflow/plugins
+      - ../gcp_keys/credenciales.json:/opt/airflow/keys/credenciales.json:ro
     command: scheduler
+    user: "${AIRFLOW_UID}:0"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob || exit 1"]
       interval: 30s
       retries: 5
-      start_period: 30s
+      start_period: 60s
+    restart: always
 
   airflow-init:
-    build: .  # Esto indica que use el Dockerfile en el directorio actual
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       _AIRFLOW_DB_MIGRATE: 'true'
+      AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: airflow
       _AIRFLOW_WWW_USER_PASSWORD: airflow
@@ -88,9 +104,8 @@ services:
       _AIRFLOW_WWW_USER_ROLE: Admin
       _AIRFLOW_WWW_USER_EMAIL: admin@example.com
     command: airflow db migrate
-    depends_on:
-      postgres:
-        condition: service_healthy
+    user: "${AIRFLOW_UID}:0"
+    restart: on-failure
 
 volumes:
   postgres-db-volume:
